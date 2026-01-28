@@ -9,11 +9,11 @@ A modern, responsive photography portfolio website built with Astro, Tailwind CS
     <tr>
       <td align="center">
         <img src="https://raw.githubusercontent.com/Images-by-Olofsson/homepage/main/public/3d-scroll/img1.jpg" width="250" alt="Portfolio Grid">
-        <br><em>More/em>
+        <br><em> More </em>
       </td>
       <td align="center">
         <img src="https://raw.githubusercontent.com/Images-by-Olofsson/homepage/main/public/3d-scroll/img2.jpg" width="250" alt="3D Scroll Effect">
-        <br><em></em>
+        <br><em> At </em>
       </td>
       <td align="center">
         <img src="https://raw.githubusercontent.com/Images-by-Olofsson/homepage/main/public/3d-scroll/img3.jpg" width="250" alt="Hero Section">
