@@ -20,7 +20,7 @@ A modern, responsive photography portfolio website built with Astro, Tailwind CS
 Here are some examples of how images are presented on the site:
 
 ### Portfolio Grid
-![Portfolio Grid](https://imagesbyolofsson.se/images/portfolio-grid.jpg)
+![Portfolio Grid](public/3d-scroll/img1.jpg)
 *A beautiful grid of images with hover effects*
 
 ### 3D Scroll Effect
