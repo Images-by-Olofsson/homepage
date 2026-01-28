@@ -1,160 +1,160 @@
 # Images by Olofsson
 
-En modern, responsiv fotografportfolio webbplats byggd med Astro, Tailwind CSS och avancerade animationer.
+A modern, responsive photography portfolio website built with Astro, Tailwind CSS, and advanced animations.
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge)](https://imagesbyolofsson.se)
 [![Astro](https://img.shields.io/badge/Astro-5.16.7-FF5E01?style=for-the-badge&logo=astro)](https://astro.build)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.1.18-06B6D4?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com)
 
-##  Funktioner
+##  Features
 
--  **Modern Design** - Minimalistisk och elegant design med fokus på bilder
--  **Avancerade Animationer** - Våg-animationer, 3D-scroll effekter och rök-partiklar
--  **Fullt Responsiv** - Perfekt anpassad för alla enheter
--  **Blazingly Fast** - Byggd med Astro för maximal prestanda
--  **Interaktiva Element** - Hover-effekter, smooth transitions och dynamiska bakgrunder
--  **SEO-optimerad** - Semantisk HTML och metadata
+-  **Modern Design** - Minimalist and elegant design with focus on images
+-  **Advanced Animations** - Wave animations, 3D scroll effects, and smoke particles
+-  **Fully Responsive** - Perfectly adapted for all devices
+-  **Blazingly Fast** - Built with Astro for maximum performance
+-  **Interactive Elements** - Hover effects, smooth transitions, and dynamic backgrounds
+-  **SEO Optimized** - Semantic HTML and metadata
 
-##  Bildexempel
+##  Image Examples
 
-Här är några exempel på hur bilder presenteras på sidan:
+Here are some examples of how images are presented on the site:
 
 ### Portfolio Grid
 ![Portfolio Grid](https://imagesbyolofsson.se/images/portfolio-grid.jpg)
-*Ett snyggt rutnät av bilder med hover-effekter*
+*A beautiful grid of images with hover effects*
 
 ### 3D Scroll Effect
 ![3D Scroll](https://imagesbyolofsson.se/images/3d-scroll-effect.jpg)
-*Dynamisk 3D-parallax effekt vid scrollning*
+*Dynamic 3D parallax effect while scrolling*
 
 ### Hero Section
 ![Hero Section](https://imagesbyolofsson.se/images/hero-section.jpg)
-*Imponerande hero-sektion med animerad text och bakgrunder*
+*Impressive hero section with animated text and backgrounds*
 
-##  Snabbstart
+##  Quick Start
 
-### Förutsättningar
+### Prerequisites
 - Node.js 18.0+ 
-- npm eller yarn
+- npm or yarn
 
 ### Installation
 
 ```bash
-# Klona repot
+# Clone the repo
 git clone https://github.com/LinusOlofsson-maker/imagesbyolofsson.se.git
 cd imagesbyolofsson.se
 
-# Installera dependencies
+# Install dependencies
 npm install
 
-# Starta utvecklingsservern
+# Start development server
 npm run dev
 ```
 
-Öppna [http://localhost:4321](http://localhost:4321) i din webbläsare.
+Open [http://localhost:4321](http://localhost:4321) in your browser.
 
-### Bygg för produktion
+### Build for Production
 
 ```bash
-# Bygg projektet
+# Build the project
 npm run build
 
-# Förhandsgranska production build
+# Preview production build
 npm run preview
 ```
 
-##  Projektstruktur
+##  Project Structure
 
 ```
 src/
-├── assets/           # Statiska resurser (bilder, SVG:er)
-├── components/       # Återanvändbara Astro-komponenter
-│   ├── WaveBackground.astro    # Animerad vågbakgrund
-│   ├── ThreeDScroll.astro      # 3D scroll-effekt
-│   ├── FloatingOrbs.astro      # Flytande orb-element
-│   └── Welcome.astro           # Välkomstkomponent
-├── layouts/          # Sid-layouter
-│   ├── MainLayout.astro        # Huvudlayout
-│   └── Layout.astro            # Bas-layout
-├── pages/            # Sid-komponenter
-│   ├── index.astro             # Startsida
-│   ├── portfolio.astro         # Portfolio-sida
-│   ├── about.astro             # Om-sida
-│   └── contact.astro           # Kontakt-sida
-└── styles/           # CSS-stilar
-    └── global.css             # Globala stilar
+├── assets/           # Static resources (images, SVGs)
+├── components/       # Reusable Astro components
+│   ├── WaveBackground.astro    # Animated wave background
+│   ├── ThreeDScroll.astro      # 3D scroll effect
+│   ├── FloatingOrbs.astro      # Floating orb elements
+│   └── Welcome.astro           # Welcome component
+├── layouts/          # Page layouts
+│   ├── MainLayout.astro        # Main layout
+│   └── Layout.astro            # Base layout
+├── pages/            # Page components
+│   ├── index.astro             # Home page
+│   ├── portfolio.astro         # Portfolio page
+│   ├── about.astro             # About page
+│   └── contact.astro           # Contact page
+└── styles/           # CSS styles
+    └── global.css             # Global styles
 ```
 
-##  Teknologier
+##  Technologies
 
-- **[Astro](https://astro.build/)** - Modern webb-ramverk
+- **[Astro](https://astro.build/)** - Modern web framework
 - **[Tailwind CSS](https://tailwindcss.com/)** - Utility-first CSS framework
-- **[TypeScript](https://www.typescriptlang.org/)** - Typsäker JavaScript
-- **[Exifr](https://github.com/mattiasw/ExifReader)** - EXIF-data läsning
+- **[TypeScript](https://www.typescriptlang.org/)** - Type-safe JavaScript
+- **[Exifr](https://github.com/mattiasw/ExifReader)** - EXIF data reading
 
-##  Designsystem
+##  Design System
 
-### Färgpalett
-- **Primär**: Cyan (#06B6D4)
-- **Sekundär**: Lila (#A855F7)
-- **Neutral**: Gråskalor (#1F2937 - #F9FAFB)
+### Color Palette
+- **Primary**: Cyan (#06B6D4)
+- **Secondary**: Purple (#A855F7)
+- **Neutral**: Grayscale (#1F2937 - #F9FAFB)
 
-### Typografi
-- **Rubriker**: Font Black, Tracking Tighter
-- **Brödtext**: Font Light
+### Typography
+- **Headings**: Font Black, Tracking Tighter
+- **Body Text**: Font Light
 - **Accent**: Uppercase, Tracking Widest
 
-### Animationer
-- **Vågor**: SVG-baserade med filter-effekter
-- **Rök**: Path-animationer med gaussian blur
-- **3D Scroll**: Parallax med transform3d
+### Animations
+- **Waves**: SVG-based with filter effects
+- **Smoke**: Path animations with gaussian blur
+- **3D Scroll**: Parallax with transform3d
 - **Transitions**: Smooth ease-in/out
 
-##  Responsiv Design
+##  Responsive Design
 
-Webbplatsen är optimerad för:
--  **Mobil** (< 768px) - Enkel kolumn, touch-vänlig
--  **Tablet** (768px - 1024px) - Mellanstor layout
--  **Desktop** (> 1024px) - Full upplevelse med alla animationer
+The website is optimized for:
+-  **Mobile** (< 768px) - Single column, touch-friendly
+-  **Tablet** (768px - 1024px) - Medium layout
+-  **Desktop** (> 1024px) - Full experience with all animations
 
-##  Prestanda
+##  Performance
 
 - **Lighthouse Score**: 95+ Performance
 - **First Contentful Paint**: < 1.5s
 - **Largest Contentful Paint**: < 2.5s
 - **Cumulative Layout Shift**: < 0.1
 
-##  Bidrag
+##  Contributing
 
-Alla bidrag är välkomna! Vänligen följ dessa steg:
+All contributions are welcome! Please follow these steps:
 
-1. Forka detta repo
-2. Skapa en feature branch (`git checkout -b feature/AmazingFeature`)
-3. Committa dina ändringar (`git commit -m 'Add some AmazingFeature'`)
-4. Pusha till branchen (`git push origin feature/AmazingFeature`)
-5. Öppna en Pull Request
+1. Fork this repo
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-##  Licens
+##  License
 
-Detta projekt är licensierat under MIT License - se [LICENSE](LICENSE) filen för detaljer.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-##  Kontakt
+##  Contact
 
-- **Webbplats**: [imagesbyolofsson.se](https://imagesbyolofsson.se)
+- **Website**: [imagesbyolofsson.se](https://imagesbyolofsson.se)
 - **Email**: info@imagesbyolofsson.se
 - **Instagram**: [@imagesbyolofsson](https://www.instagram.com/imagesbyolofsson/)
 - **LinkedIn**: [Linus Olofsson](https://www.linkedin.com/in/linus-olofsson-/)
 
-##  Tack
+##  Acknowledgments
 
-Tack till alla fantastiska open-source projekt som gjort detta möjligt:
-- [Astro](https://astro.build/) - För det fantastiska webb-ramverket
-- [Tailwind CSS](https://tailwindcss.com/) - För det kraftfulla CSS-ramverket
-- [Adobe Lightroom](https://lightroom.adobe.com/) - För bildbehandling
+Thanks to all the amazing open-source projects that made this possible:
+- [Astro](https://astro.build/) - For the fantastic web framework
+- [Tailwind CSS](https://tailwindcss.com/) - For the powerful CSS framework
+- [Adobe Lightroom](https://lightroom.adobe.com/) - For image processing
 
 ---
 
 <div align="center">
-  <p>Byggd av <a href="https://github.com/LinusOlofsson-maker">Linus Olofsson</a></p>
-  <p>© 2024 Images by Olofsson. Alla rättigheter reserverade.</p>
+  <p>Built by <a href="https://github.com/LinusOlofsson-maker">Linus Olofsson</a></p>
+  <p>© 2024 Images by Olofsson. All rights reserved.</p>
 </div>
