@@ -395,6 +395,8 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
             requestAnimationFrame(step);
         }
 
+        const SPLIT_PROBABILITY = 0.55;
+
         function pickAndPulse() {
             if (isPulsing) {
                 schedule();
@@ -404,7 +406,28 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
                 schedule();
                 return;
             }
-            const choice = wavePaths[Math.floor(Math.random() * wavePaths.length)];
+            const boxes = refreshBoxes();
+            const intersecting: SVGPathElement[] = [];
+            const nonIntersecting: SVGPathElement[] = [];
+            for (const p of wavePaths) {
+                const speedKey = getSpeedKey(p.id);
+                const pathTx = speedKey ? window.scrollY * speeds[speedKey] : 0;
+                const hit = boxes.length > 0 ? findBoxIntersection(p, pathTx, boxes) : null;
+                if (hit) intersecting.push(p);
+                else nonIntersecting.push(p);
+            }
+
+            let choice: SVGPathElement;
+            const wantSplit = Math.random() < SPLIT_PROBABILITY;
+            if (wantSplit && intersecting.length > 0) {
+                choice = intersecting[Math.floor(Math.random() * intersecting.length)];
+            } else if (!wantSplit && nonIntersecting.length > 0) {
+                choice = nonIntersecting[Math.floor(Math.random() * nonIntersecting.length)];
+            } else if (intersecting.length > 0) {
+                choice = intersecting[Math.floor(Math.random() * intersecting.length)];
+            } else {
+                choice = nonIntersecting[Math.floor(Math.random() * nonIntersecting.length)];
+            }
             runThreadPulse(choice, 18000 + Math.random() * 8000);
             schedule();
         }
