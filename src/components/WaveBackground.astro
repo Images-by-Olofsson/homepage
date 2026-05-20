@@ -6,7 +6,7 @@ const mainColor = theme === 'purple' ? '#c026d3' : '#4fd1c5';
 const secondaryColor = theme === 'purple' ? '#db2777' : '#22d3ee';
 const pulseMain = theme === 'purple' ? '#f0abfc' : '#a5f3fc';
 const pulseSec = theme === 'purple' ? '#fbcfe8' : '#cffafe';
-const pulseCore = '#ffffff';
+const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
 ---
 
 <div
@@ -73,7 +73,7 @@ const pulseCore = '#ffffff';
             <g id="pulse-blob" opacity="0">
                 <ellipse id="pulse-halo" rx="55" ry="22" fill="url(#pulseHaloGradient)" filter="url(#pulseGlowSoft)" />
                 <ellipse id="pulse-mid" rx="32" ry="11" fill="url(#pulseMidGradient)" filter="url(#pulseGlowMid)" />
-                <ellipse id="pulse-core" rx="14" ry="4" fill="url(#pulseCoreGradient)" filter="url(#pulseGlowSharp)" />
+                <ellipse id="pulse-core" rx="10" ry="3" fill="url(#pulseCoreGradient)" filter="url(#pulseGlowSharp)" opacity="0.75" />
             </g>
         </g>
     </svg>
