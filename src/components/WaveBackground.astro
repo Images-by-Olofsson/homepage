@@ -2,15 +2,19 @@
 // src/components/WaveBackground.astro
 const { opacity = "opacity-30", theme = "cyan" } = Astro.props;
 
-// Definiera färger baserat på tema
-// Cyan = Originalet (Startsidan bas)
-// Purple = Contact-sidan (Matchar boxen)
-const mainColor = theme === 'purple' ? '#c026d3' : '#4fd1c5'; // Purple-600 vs Teal-400
-const secondaryColor = theme === 'purple' ? '#db2777' : '#22d3ee'; // Pink-600 vs Cyan-400
+const mainColor = theme === 'purple' ? '#c026d3' : '#4fd1c5';
+const secondaryColor = theme === 'purple' ? '#db2777' : '#22d3ee';
+const pulseMain = theme === 'purple' ? '#e879f9' : '#67e8f9';
+const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
 ---
 
-<div class={`fixed inset-0 w-full h-full pointer-events-none -z-10 bg-neutral-900 ${opacity}`}>
-    <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+<div
+  class={`fixed inset-0 w-full h-full pointer-events-none -z-10 bg-neutral-900 ${opacity}`}
+  data-wave-theme={theme}
+  data-pulse-main={pulseMain}
+  data-pulse-sec={pulseSec}
+>
+    <svg id="wave-svg" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
         <defs>
             <linearGradient id="gradMain" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" style={`stop-color:${mainColor};stop-opacity:0`} />
@@ -23,53 +27,202 @@ const secondaryColor = theme === 'purple' ? '#db2777' : '#22d3ee'; // Pink-600 v
                 <stop offset="30%" style={`stop-color:${secondaryColor};stop-opacity:0.3`} />
                 <stop offset="100%" style={`stop-color:${secondaryColor};stop-opacity:0`} />
             </linearGradient>
-        </defs>
-        
-        <g id="wave-group">
-            <path id="wave1" d="M-1000 300 Q 250 100 800 300 T 2600 300" fill="none" stroke="url(#gradMain)" stroke-width="1" />
-            <path id="wave2" d="M-1000 500 Q 250 700 800 500 T 2600 500" fill="none" stroke="url(#gradMain)" stroke-width="1.5" />
-            <path id="wave3" d="M-1000 700 Q 250 500 800 700 T 2600 700" fill="none" stroke="url(#gradMain)" stroke-width="0.5" />
 
-            <path id="thread1" d="M-1000 200 Q 400 400 900 200 T 2600 200" fill="none" stroke="url(#gradSec)" stroke-width="0.5" class="opacity-50" />
-            <path id="thread2" d="M-1000 800 Q 600 600 1100 800 T 2600 800" fill="none" stroke="url(#gradSec)" stroke-width="0.8" class="opacity-60" />
+            <filter id="pulseBlur" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="6" />
+            </filter>
+
+            <radialGradient id="pulseGradient">
+                <stop offset="0%" style={`stop-color:${pulseMain};stop-opacity:1`} />
+                <stop offset="60%" style={`stop-color:${pulseMain};stop-opacity:0.4`} />
+                <stop offset="100%" style={`stop-color:${pulseMain};stop-opacity:0`} />
+            </radialGradient>
+        </defs>
+
+        <g id="wave-group">
+            <path id="wave1" d="M-1000 300 Q 250 100 800 300 T 2600 300" fill="none" stroke="url(#gradMain)" stroke-width="1" data-pulse-path="true" />
+            <path id="wave2" d="M-1000 500 Q 250 700 800 500 T 2600 500" fill="none" stroke="url(#gradMain)" stroke-width="1.5" data-pulse-path="true" />
+            <path id="wave3" d="M-1000 700 Q 250 500 800 700 T 2600 700" fill="none" stroke="url(#gradMain)" stroke-width="0.5" data-pulse-path="true" />
+
+            <path id="thread1" d="M-1000 200 Q 400 400 900 200 T 2600 200" fill="none" stroke="url(#gradSec)" stroke-width="0.5" class="opacity-50" data-pulse-path="true" />
+            <path id="thread2" d="M-1000 800 Q 600 600 1100 800 T 2600 800" fill="none" stroke="url(#gradSec)" stroke-width="0.8" class="opacity-60" data-pulse-path="true" />
+        </g>
+
+        <g id="box-trail-group"></g>
+
+        <g id="pulse-group">
+            <circle id="pulse-blob" r="14" fill="url(#pulseGradient)" filter="url(#pulseBlur)" opacity="0" />
         </g>
     </svg>
 </div>
 
 <script>
-    const wave1 = document.getElementById('wave1');
-    const wave2 = document.getElementById('wave2');
-    const wave3 = document.getElementById('wave3');
-    const thread1 = document.getElementById('thread1');
-    const thread2 = document.getElementById('thread2');
+    type Speeds = { w1: number; w2: number; w3: number; t1: number; t2: number };
 
-    // Olika hastigheter för parallax-effekt
-    const speeds = {
-        w1: 0.5,
-        w2: -0.8,
-        w3: 1.2,
-        t1: 1.8, // Snabbare "random" tråd
-        t2: -1.5 // Snabbare "random" tråd åt andra hållet
-    };
+    const wave1 = document.getElementById('wave1') as SVGPathElement | null;
+    const wave2 = document.getElementById('wave2') as SVGPathElement | null;
+    const wave3 = document.getElementById('wave3') as SVGPathElement | null;
+    const thread1 = document.getElementById('thread1') as SVGPathElement | null;
+    const thread2 = document.getElementById('thread2') as SVGPathElement | null;
+    const svg = document.getElementById('wave-svg') as unknown as SVGSVGElement | null;
+    const blob = document.getElementById('pulse-blob') as SVGCircleElement | null;
+    const boxGroup = document.getElementById('box-trail-group') as SVGGElement | null;
+    const wrapper = svg?.parentElement;
+
+    const speeds: Speeds = { w1: 0.5, w2: -0.8, w3: 1.2, t1: 1.8, t2: -1.5 };
 
     function onScroll() {
         const scrollY = window.scrollY;
-
-        if(wave1) wave1.style.transform = `translateX(${scrollY * speeds.w1}px)`;
-        if(wave2) wave2.style.transform = `translateX(${scrollY * speeds.w2}px)`;
-        if(wave3) wave3.style.transform = `translateX(${scrollY * speeds.w3}px)`;
-        
-        // Random trådarna rör sig mer
-        if(thread1) thread1.style.transform = `translateX(${scrollY * speeds.t1}px)`;
-        if(thread2) thread2.style.transform = `translateX(${scrollY * speeds.t2}px)`;
+        if (wave1) wave1.style.transform = `translateX(${scrollY * speeds.w1}px)`;
+        if (wave2) wave2.style.transform = `translateX(${scrollY * speeds.w2}px)`;
+        if (wave3) wave3.style.transform = `translateX(${scrollY * speeds.w3}px)`;
+        if (thread1) thread1.style.transform = `translateX(${scrollY * speeds.t1}px)`;
+        if (thread2) thread2.style.transform = `translateX(${scrollY * speeds.t2}px)`;
     }
-
     window.addEventListener('scroll', onScroll, { passive: true });
+
+    if (svg && blob && wrapper) {
+        const pulseMain = wrapper.getAttribute('data-pulse-main') || '#67e8f9';
+        const pulseSec = wrapper.getAttribute('data-pulse-sec') || '#a5f3fc';
+
+        const wavePaths = Array.from(document.querySelectorAll<SVGPathElement>('[data-pulse-path="true"]'));
+        const NS = 'http://www.w3.org/2000/svg';
+
+        function buildBoxPath(rect: DOMRect): string {
+            const r = 14;
+            const x = rect.left;
+            const y = rect.top;
+            const w = rect.width;
+            const h = rect.height;
+            return [
+                `M ${x + r} ${y}`,
+                `H ${x + w - r}`,
+                `A ${r} ${r} 0 0 1 ${x + w} ${y + r}`,
+                `V ${y + h - r}`,
+                `A ${r} ${r} 0 0 1 ${x + w - r} ${y + h}`,
+                `H ${x + r}`,
+                `A ${r} ${r} 0 0 1 ${x} ${y + h - r}`,
+                `V ${y + r}`,
+                `A ${r} ${r} 0 0 1 ${x + r} ${y}`,
+                `Z`,
+            ].join(' ');
+        }
+
+        function clearBoxGroup() {
+            if (!boxGroup) return;
+            while (boxGroup.firstChild) boxGroup.removeChild(boxGroup.firstChild);
+        }
+
+        function refreshBoxPaths(): SVGPathElement[] {
+            if (!boxGroup) return [];
+            clearBoxGroup();
+            const targets = document.querySelectorAll<HTMLElement>('[data-trail-box]');
+            const created: SVGPathElement[] = [];
+            targets.forEach((el, idx) => {
+                const rect = el.getBoundingClientRect();
+                if (rect.width < 20 || rect.height < 20) return;
+                if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+                const p = document.createElementNS(NS, 'path');
+                p.setAttribute('id', `trail-box-${idx}`);
+                p.setAttribute('d', buildBoxPath(rect));
+                p.setAttribute('fill', 'none');
+                p.setAttribute('stroke', 'transparent');
+                p.setAttribute('data-trail-box-path', 'true');
+                boxGroup.appendChild(p);
+                created.push(p);
+            });
+            return created;
+        }
+
+        let currentTimeout: number | null = null;
+        let isPulsing = false;
+
+        function runPulse(path: SVGPathElement, duration = 4500) {
+            if (!blob) return;
+            isPulsing = true;
+            const length = path.getTotalLength();
+            const startTime = performance.now();
+            const isSecondary =
+                (path.getAttribute('stroke') || '').includes('gradSec') ||
+                path.id === 'thread1' ||
+                path.id === 'thread2';
+            const color = isSecondary ? pulseSec : pulseMain;
+
+            const grad = document.querySelector('#pulseGradient stop:first-child') as SVGStopElement | null;
+            const gradMid = document.querySelectorAll('#pulseGradient stop')[1] as SVGStopElement | null;
+            if (grad) grad.setAttribute('style', `stop-color:${color};stop-opacity:1`);
+            if (gradMid) gradMid.setAttribute('style', `stop-color:${color};stop-opacity:0.4`);
+
+            function step(now: number) {
+                if (!blob) return;
+                const elapsed = now - startTime;
+                const t = Math.min(elapsed / duration, 1);
+                const pt = path.getPointAtLength(t * length);
+
+                let pathTx = 0;
+                const speedKey =
+                    path.id === 'wave1' ? 'w1'
+                    : path.id === 'wave2' ? 'w2'
+                    : path.id === 'wave3' ? 'w3'
+                    : path.id === 'thread1' ? 't1'
+                    : path.id === 'thread2' ? 't2'
+                    : null;
+                if (speedKey) pathTx = window.scrollY * speeds[speedKey as keyof Speeds];
+
+                blob.setAttribute('cx', String(pt.x + pathTx));
+                blob.setAttribute('cy', String(pt.y));
+
+                let opacity = 0;
+                if (t < 0.15) opacity = t / 0.15;
+                else if (t > 0.85) opacity = (1 - t) / 0.15;
+                else opacity = 1;
+                blob.setAttribute('opacity', String(opacity * 0.9));
+
+                if (t < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    blob.setAttribute('opacity', '0');
+                    isPulsing = false;
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        function pickAndPulse() {
+            if (isPulsing) {
+                schedule();
+                return;
+            }
+            const boxes = refreshBoxPaths();
+            const allTargets: SVGPathElement[] = [...wavePaths, ...boxes];
+            if (allTargets.length === 0) {
+                schedule();
+                return;
+            }
+            const choice = allTargets[Math.floor(Math.random() * allTargets.length)];
+            const isBox = choice.getAttribute('data-trail-box-path') === 'true';
+            runPulse(choice, isBox ? 3500 : 4500 + Math.random() * 2000);
+            schedule();
+        }
+
+        function schedule() {
+            if (currentTimeout) clearTimeout(currentTimeout);
+            const delay = 2500 + Math.random() * 4500;
+            currentTimeout = window.setTimeout(pickAndPulse, delay);
+        }
+
+        const startDelay = 1500 + Math.random() * 2000;
+        currentTimeout = window.setTimeout(pickAndPulse, startDelay);
+    }
 </script>
 
 <style>
     path {
         transition: transform 0.1s linear;
         will-change: transform;
+    }
+    #pulse-blob {
+        transition: opacity 0.05s linear;
+        mix-blend-mode: screen;
     }
 </style>
