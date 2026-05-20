@@ -70,10 +70,15 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
         <g id="box-trail-group"></g>
 
         <g id="pulse-group">
-            <g id="pulse-blob" opacity="0">
-                <ellipse id="pulse-halo" rx="55" ry="22" fill="url(#pulseHaloGradient)" filter="url(#pulseGlowSoft)" />
-                <ellipse id="pulse-mid" rx="32" ry="11" fill="url(#pulseMidGradient)" filter="url(#pulseGlowMid)" />
-                <ellipse id="pulse-core" rx="10" ry="3" fill="url(#pulseCoreGradient)" filter="url(#pulseGlowSharp)" opacity="0.75" />
+            <g id="pulse-blob-1" opacity="0">
+                <ellipse rx="55" ry="22" fill="url(#pulseHaloGradient)" filter="url(#pulseGlowSoft)" />
+                <ellipse rx="32" ry="11" fill="url(#pulseMidGradient)" filter="url(#pulseGlowMid)" />
+                <ellipse rx="10" ry="3" fill="url(#pulseCoreGradient)" filter="url(#pulseGlowSharp)" opacity="0.75" />
+            </g>
+            <g id="pulse-blob-2" opacity="0">
+                <ellipse rx="55" ry="22" fill="url(#pulseHaloGradient)" filter="url(#pulseGlowSoft)" />
+                <ellipse rx="32" ry="11" fill="url(#pulseMidGradient)" filter="url(#pulseGlowMid)" />
+                <ellipse rx="10" ry="3" fill="url(#pulseCoreGradient)" filter="url(#pulseGlowSharp)" opacity="0.75" />
             </g>
         </g>
     </svg>
@@ -88,10 +93,8 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
     const thread1 = document.getElementById('thread1') as SVGPathElement | null;
     const thread2 = document.getElementById('thread2') as SVGPathElement | null;
     const svg = document.getElementById('wave-svg') as unknown as SVGSVGElement | null;
-    const blobGroup = document.getElementById('pulse-blob') as SVGGElement | null;
-    const halo = document.getElementById('pulse-halo') as SVGEllipseElement | null;
-    const mid = document.getElementById('pulse-mid') as SVGEllipseElement | null;
-    const core = document.getElementById('pulse-core') as SVGEllipseElement | null;
+    const blob1 = document.getElementById('pulse-blob-1') as SVGGElement | null;
+    const blob2 = document.getElementById('pulse-blob-2') as SVGGElement | null;
     const boxGroup = document.getElementById('box-trail-group') as SVGGElement | null;
     const wrapper = svg?.parentElement;
 
@@ -116,7 +119,10 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
     }
     window.addEventListener('scroll', onScroll, { passive: true });
 
-    if (svg && blobGroup && halo && mid && core && wrapper) {
+    type BoxRect = { left: number; right: number; top: number; bottom: number; cx: number; cy: number; r: number };
+    type PulsePath = { kind: 'thread'; id: string; pathTx: number } | { kind: 'box'; cx: number; cy: number };
+
+    if (svg && blob1 && blob2 && wrapper) {
         const pulseMain = wrapper.getAttribute('data-pulse-main') || '#a5f3fc';
         const pulseSec = wrapper.getAttribute('data-pulse-sec') || '#cffafe';
 
@@ -125,10 +131,7 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
 
         function buildBoxPath(rect: DOMRect): string {
             const r = 16;
-            const x = rect.left;
-            const y = rect.top;
-            const w = rect.width;
-            const h = rect.height;
+            const x = rect.left, y = rect.top, w = rect.width, h = rect.height;
             return [
                 `M ${x + r} ${y}`,
                 `H ${x + w - r}`,
@@ -148,11 +151,12 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
             while (boxGroup.firstChild) boxGroup.removeChild(boxGroup.firstChild);
         }
 
-        function refreshBoxPaths(): SVGPathElement[] {
-            if (!boxGroup) return [];
+        function refreshBoxPaths(): { paths: SVGPathElement[]; rects: DOMRect[] } {
+            if (!boxGroup) return { paths: [], rects: [] };
             clearBoxGroup();
             const targets = document.querySelectorAll<HTMLElement>('[data-trail-box]');
-            const created: SVGPathElement[] = [];
+            const paths: SVGPathElement[] = [];
+            const rects: DOMRect[] = [];
             targets.forEach((el, idx) => {
                 const rect = el.getBoundingClientRect();
                 if (rect.width < 20 || rect.height < 20) return;
@@ -164,9 +168,10 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
                 p.setAttribute('stroke', 'transparent');
                 p.setAttribute('data-trail-box-path', 'true');
                 boxGroup.appendChild(p);
-                created.push(p);
+                paths.push(p);
+                rects.push(rect);
             });
-            return created;
+            return { paths, rects };
         }
 
         function updatePulseColors(isSecondary: boolean) {
@@ -184,14 +189,116 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
             if (midStops[2]) midStops[2].setAttribute('style', `stop-color:${midColor};stop-opacity:0`);
         }
 
+        function rectExpand(rect: DOMRect, pad: number): BoxRect {
+            return {
+                left: rect.left - pad,
+                right: rect.right + pad,
+                top: rect.top - pad,
+                bottom: rect.bottom + pad,
+                cx: rect.left + rect.width / 2,
+                cy: rect.top + rect.height / 2,
+                r: 16,
+            };
+        }
+
+        function pointInBox(x: number, y: number, b: BoxRect): boolean {
+            return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom;
+        }
+
+        function findBoxIntersection(
+            path: SVGPathElement,
+            pathTx: number,
+            boxes: BoxRect[]
+        ): { boxIdx: number; entryLen: number; exitLen: number } | null {
+            const total = path.getTotalLength();
+            const step = 4;
+            let activeBox = -1;
+            let entryLen = -1;
+            for (let len = 0; len <= total; len += step) {
+                const pt = path.getPointAtLength(len);
+                const x = pt.x + pathTx;
+                const y = pt.y;
+                for (let bi = 0; bi < boxes.length; bi++) {
+                    if (pointInBox(x, y, boxes[bi])) {
+                        if (activeBox === -1) {
+                            activeBox = bi;
+                            entryLen = len;
+                        } else if (activeBox === bi) {
+                            // still in same box, continue
+                        }
+                        break;
+                    }
+                }
+                if (activeBox !== -1) {
+                    // Check if we left
+                    const stillIn = pointInBox(x, y, boxes[activeBox]);
+                    if (!stillIn) {
+                        return { boxIdx: activeBox, entryLen, exitLen: len };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function buildBoxHalfPath(box: BoxRect, half: 'top' | 'bottom'): SVGPathElement {
+            const r = box.r;
+            const x = box.left + 16; // un-pad: revert to original rect
+            const y = box.top + 16;
+            const w = (box.right - box.left) - 32;
+            const h = (box.bottom - box.top) - 32;
+            // Entry-point assumed left side at cy; exit-point right side at cy
+            const yMid = box.cy;
+            let d: string;
+            if (half === 'top') {
+                d = [
+                    `M ${x} ${yMid}`,
+                    `V ${y + r}`,
+                    `A ${r} ${r} 0 0 1 ${x + r} ${y}`,
+                    `H ${x + w - r}`,
+                    `A ${r} ${r} 0 0 1 ${x + w} ${y + r}`,
+                    `V ${yMid}`,
+                ].join(' ');
+            } else {
+                d = [
+                    `M ${x} ${yMid}`,
+                    `V ${y + h - r}`,
+                    `A ${r} ${r} 0 0 0 ${x + r} ${y + h}`,
+                    `H ${x + w - r}`,
+                    `A ${r} ${r} 0 0 0 ${x + w} ${y + h - r}`,
+                    `V ${yMid}`,
+                ].join(' ');
+            }
+            const p = document.createElementNS(NS, 'path');
+            p.setAttribute('d', d);
+            p.setAttribute('fill', 'none');
+            p.setAttribute('stroke', 'transparent');
+            return p;
+        }
+
+        function applyTransform(blob: SVGGElement, x: number, y: number, angle: number) {
+            blob.setAttribute('transform', `translate(${x} ${y}) rotate(${angle})`);
+        }
+
+        function tangentAngle(path: SVGPathElement, len: number, total: number): number {
+            const delta = Math.max(1, total * 0.002);
+            const before = path.getPointAtLength(Math.max(0, len - delta));
+            const after = path.getPointAtLength(Math.min(total, len + delta));
+            return Math.atan2(after.y - before.y, after.x - before.x) * (180 / Math.PI);
+        }
+
+        function fadeFactor(t: number): number {
+            if (t < 0.18) return t / 0.18;
+            if (t > 0.82) return (1 - t) / 0.18;
+            return 1;
+        }
+
         let currentTimeout: number | null = null;
         let isPulsing = false;
 
-        function runPulse(path: SVGPathElement, duration = 9000) {
-            if (!blobGroup || !halo || !mid || !core) return;
+        function runThreadPulse(path: SVGPathElement, durationMs: number) {
+            if (!blob1 || !blob2) return;
             isPulsing = true;
-            const length = path.getTotalLength();
-            const startTime = performance.now();
+            const total = path.getTotalLength();
             const isSecondary =
                 (path.getAttribute('stroke') || '').includes('gradSec') ||
                 path.id === 'thread1' ||
@@ -199,42 +306,123 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
             updatePulseColors(isSecondary);
 
             const speedKey = getSpeedKey(path.id);
+            const { rects: boxRects } = refreshBoxPaths();
+            const boxes: BoxRect[] = boxRects.map(r => rectExpand(r, 4));
+
+            const pathTx0 = speedKey ? window.scrollY * speeds[speedKey] : 0;
+            const hit = findBoxIntersection(path, pathTx0, boxes);
+
+            // Velocity = pixels per ms across full pathLength over full duration
+            const velocity = total / durationMs;
+
+            const startTime = performance.now();
+            blob2.setAttribute('opacity', '0');
+
+            // PHASE 1: glide from 0 to entry (or full if no hit)
+            const entryLen = hit ? hit.entryLen : total;
+            const exitLen = hit ? hit.exitLen : total;
+            const phase1Duration = entryLen / velocity;
+
+            // PHASE 2: split around box from entryLen at velocity
+            let topPath: SVGPathElement | null = null;
+            let bottomPath: SVGPathElement | null = null;
+            let phase2Duration = 0;
+            if (hit) {
+                topPath = buildBoxHalfPath(boxes[hit.boxIdx], 'top');
+                bottomPath = buildBoxHalfPath(boxes[hit.boxIdx], 'bottom');
+                if (boxGroup) {
+                    boxGroup.appendChild(topPath);
+                    boxGroup.appendChild(bottomPath);
+                }
+                const topLen = topPath.getTotalLength();
+                const bottomLen = bottomPath.getTotalLength();
+                const maxHalf = Math.max(topLen, bottomLen);
+                phase2Duration = maxHalf / velocity;
+            }
+
+            // PHASE 3: glide from exitLen to end at velocity
+            const phase3Duration = hit ? (total - exitLen) / velocity : 0;
 
             function step(now: number) {
-                if (!blobGroup || !halo || !mid || !core) return;
+                if (!blob1 || !blob2) return;
                 const elapsed = now - startTime;
-                const t = Math.min(elapsed / duration, 1);
-                const eased = t < 0.5
-                    ? 2 * t * t
-                    : 1 - Math.pow(-2 * t + 2, 2) / 2;
-
-                const pt = path.getPointAtLength(eased * length);
-
-                const sampleDelta = Math.max(1, length * 0.002);
-                const before = path.getPointAtLength(Math.max(0, eased * length - sampleDelta));
-                const after = path.getPointAtLength(Math.min(length, eased * length + sampleDelta));
-                const dx = after.x - before.x;
-                const dy = after.y - before.y;
-                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
+                const totalTime = phase1Duration + phase2Duration + phase3Duration;
+                const globalT = Math.min(elapsed / totalTime, 1);
+                const fade = fadeFactor(globalT);
                 const pathTx = speedKey ? window.scrollY * speeds[speedKey] : 0;
-                const cx = pt.x + pathTx;
-                const cy = pt.y;
 
-                blobGroup.setAttribute('transform', `translate(${cx} ${cy}) rotate(${angle})`);
+                if (elapsed <= phase1Duration) {
+                    // Phase 1: single blob on path
+                    const len = elapsed * velocity;
+                    const pt = path.getPointAtLength(Math.min(len, total));
+                    const angle = tangentAngle(path, Math.min(len, total), total);
+                    applyTransform(blob1, pt.x + pathTx, pt.y, angle);
+                    blob1.setAttribute('opacity', String(fade));
+                    blob2.setAttribute('opacity', '0');
+                } else if (hit && elapsed <= phase1Duration + phase2Duration) {
+                    // Phase 2: split around box
+                    const inPhase2 = elapsed - phase1Duration;
+                    if (topPath && bottomPath) {
+                        const topLen = topPath.getTotalLength();
+                        const bottomLen = bottomPath.getTotalLength();
+                        const tDist = Math.min(inPhase2 * velocity, topLen);
+                        const bDist = Math.min(inPhase2 * velocity, bottomLen);
 
-                let opacity = 0;
-                if (t < 0.18) opacity = (t / 0.18);
-                else if (t > 0.82) opacity = ((1 - t) / 0.18);
-                else opacity = 1;
-                opacity = Math.max(0, Math.min(1, opacity));
+                        const tp = topPath.getPointAtLength(tDist);
+                        const ta = tangentAngle(topPath, tDist, topLen);
+                        applyTransform(blob1, tp.x, tp.y, ta);
+                        blob1.setAttribute('opacity', String(fade));
 
-                blobGroup.setAttribute('opacity', String(opacity));
+                        const bp = bottomPath.getPointAtLength(bDist);
+                        const ba = tangentAngle(bottomPath, bDist, bottomLen);
+                        applyTransform(blob2, bp.x, bp.y, ba);
+                        blob2.setAttribute('opacity', String(fade));
+                    }
+                } else if (hit) {
+                    // Phase 3: single blob continues from exitLen
+                    const inPhase3 = elapsed - phase1Duration - phase2Duration;
+                    const len = exitLen + inPhase3 * velocity;
+                    const clamped = Math.min(len, total);
+                    const pt = path.getPointAtLength(clamped);
+                    const angle = tangentAngle(path, clamped, total);
+                    applyTransform(blob1, pt.x + pathTx, pt.y, angle);
+                    blob1.setAttribute('opacity', String(fade));
+                    blob2.setAttribute('opacity', '0');
+                }
 
-                if (t < 1) {
+                if (elapsed < (phase1Duration + phase2Duration + phase3Duration) && globalT < 1) {
                     requestAnimationFrame(step);
                 } else {
-                    blobGroup.setAttribute('opacity', '0');
+                    blob1.setAttribute('opacity', '0');
+                    blob2.setAttribute('opacity', '0');
+                    if (topPath && boxGroup && topPath.parentNode) boxGroup.removeChild(topPath);
+                    if (bottomPath && boxGroup && bottomPath.parentNode) boxGroup.removeChild(bottomPath);
+                    isPulsing = false;
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        function runBoxPulse(boxPath: SVGPathElement, durationMs: number) {
+            if (!blob1 || !blob2) return;
+            isPulsing = true;
+            updatePulseColors(true);
+            const total = boxPath.getTotalLength();
+            const startTime = performance.now();
+            blob2.setAttribute('opacity', '0');
+            function step(now: number) {
+                if (!blob1) return;
+                const elapsed = now - startTime;
+                const t = Math.min(elapsed / durationMs, 1);
+                const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                const len = eased * total;
+                const pt = boxPath.getPointAtLength(len);
+                const angle = tangentAngle(boxPath, len, total);
+                applyTransform(blob1, pt.x, pt.y, angle);
+                blob1.setAttribute('opacity', String(fadeFactor(t)));
+                if (t < 1) requestAnimationFrame(step);
+                else {
+                    blob1.setAttribute('opacity', '0');
                     isPulsing = false;
                 }
             }
@@ -246,18 +434,21 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
                 schedule();
                 return;
             }
-            const boxes = refreshBoxPaths();
-            const allTargets: SVGPathElement[] = [...wavePaths, ...boxes];
+            const { paths: boxPaths } = refreshBoxPaths();
+            const allTargets: { kind: 'wave' | 'box'; path: SVGPathElement }[] = [
+                ...wavePaths.map(p => ({ kind: 'wave' as const, path: p })),
+                ...boxPaths.map(p => ({ kind: 'box' as const, path: p })),
+            ];
             if (allTargets.length === 0) {
                 schedule();
                 return;
             }
             const choice = allTargets[Math.floor(Math.random() * allTargets.length)];
-            const isBox = choice.getAttribute('data-trail-box-path') === 'true';
-            const duration = isBox
-                ? 14000 + Math.random() * 4000
-                : 18000 + Math.random() * 8000;
-            runPulse(choice, duration);
+            if (choice.kind === 'wave') {
+                runThreadPulse(choice.path, 18000 + Math.random() * 8000);
+            } else {
+                runBoxPulse(choice.path, 14000 + Math.random() * 4000);
+            }
             schedule();
         }
 
@@ -277,10 +468,10 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
         transition: transform 0.1s linear;
         will-change: transform;
     }
-    #pulse-blob {
+    #pulse-blob-1, #pulse-blob-2 {
         mix-blend-mode: screen;
     }
-    #pulse-blob ellipse {
+    #pulse-blob-1 ellipse, #pulse-blob-2 ellipse {
         transform-box: fill-box;
         transform-origin: center;
     }
