@@ -4,8 +4,9 @@ const { opacity = "opacity-30", theme = "cyan" } = Astro.props;
 
 const mainColor = theme === 'purple' ? '#c026d3' : '#4fd1c5';
 const secondaryColor = theme === 'purple' ? '#db2777' : '#22d3ee';
-const pulseMain = theme === 'purple' ? '#e879f9' : '#67e8f9';
-const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
+const pulseMain = theme === 'purple' ? '#f0abfc' : '#a5f3fc';
+const pulseSec = theme === 'purple' ? '#fbcfe8' : '#cffafe';
+const pulseCore = '#ffffff';
 ---
 
 <div
@@ -14,7 +15,7 @@ const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
   data-pulse-main={pulseMain}
   data-pulse-sec={pulseSec}
 >
-    <svg id="wave-svg" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+    <svg id="wave-svg" class="w-full h-full" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
         <defs>
             <linearGradient id="gradMain" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" style={`stop-color:${mainColor};stop-opacity:0`} />
@@ -28,14 +29,32 @@ const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
                 <stop offset="100%" style={`stop-color:${secondaryColor};stop-opacity:0`} />
             </linearGradient>
 
-            <filter id="pulseBlur" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="6" />
+            <filter id="pulseGlowSoft" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="22" />
+            </filter>
+            <filter id="pulseGlowMid" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="9" />
+            </filter>
+            <filter id="pulseGlowSharp" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="2.5" />
             </filter>
 
-            <radialGradient id="pulseGradient">
-                <stop offset="0%" style={`stop-color:${pulseMain};stop-opacity:1`} />
-                <stop offset="60%" style={`stop-color:${pulseMain};stop-opacity:0.4`} />
+            <radialGradient id="pulseHaloGradient">
+                <stop offset="0%" style={`stop-color:${pulseMain};stop-opacity:0.85`} />
+                <stop offset="40%" style={`stop-color:${pulseMain};stop-opacity:0.35`} />
                 <stop offset="100%" style={`stop-color:${pulseMain};stop-opacity:0`} />
+            </radialGradient>
+
+            <radialGradient id="pulseMidGradient">
+                <stop offset="0%" style={`stop-color:${pulseSec};stop-opacity:1`} />
+                <stop offset="60%" style={`stop-color:${pulseSec};stop-opacity:0.5`} />
+                <stop offset="100%" style={`stop-color:${pulseSec};stop-opacity:0`} />
+            </radialGradient>
+
+            <radialGradient id="pulseCoreGradient">
+                <stop offset="0%" style={`stop-color:${pulseCore};stop-opacity:1`} />
+                <stop offset="50%" style={`stop-color:${pulseCore};stop-opacity:0.6`} />
+                <stop offset="100%" style={`stop-color:${pulseCore};stop-opacity:0`} />
             </radialGradient>
         </defs>
 
@@ -51,7 +70,11 @@ const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
         <g id="box-trail-group"></g>
 
         <g id="pulse-group">
-            <circle id="pulse-blob" r="14" fill="url(#pulseGradient)" filter="url(#pulseBlur)" opacity="0" />
+            <g id="pulse-blob" opacity="0">
+                <ellipse id="pulse-halo" rx="55" ry="22" fill="url(#pulseHaloGradient)" filter="url(#pulseGlowSoft)" />
+                <ellipse id="pulse-mid" rx="32" ry="11" fill="url(#pulseMidGradient)" filter="url(#pulseGlowMid)" />
+                <ellipse id="pulse-core" rx="14" ry="4" fill="url(#pulseCoreGradient)" filter="url(#pulseGlowSharp)" />
+            </g>
         </g>
     </svg>
 </div>
@@ -65,11 +88,23 @@ const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
     const thread1 = document.getElementById('thread1') as SVGPathElement | null;
     const thread2 = document.getElementById('thread2') as SVGPathElement | null;
     const svg = document.getElementById('wave-svg') as unknown as SVGSVGElement | null;
-    const blob = document.getElementById('pulse-blob') as SVGCircleElement | null;
+    const blobGroup = document.getElementById('pulse-blob') as SVGGElement | null;
+    const halo = document.getElementById('pulse-halo') as SVGEllipseElement | null;
+    const mid = document.getElementById('pulse-mid') as SVGEllipseElement | null;
+    const core = document.getElementById('pulse-core') as SVGEllipseElement | null;
     const boxGroup = document.getElementById('box-trail-group') as SVGGElement | null;
     const wrapper = svg?.parentElement;
 
     const speeds: Speeds = { w1: 0.5, w2: -0.8, w3: 1.2, t1: 1.8, t2: -1.5 };
+
+    function getSpeedKey(id: string): keyof Speeds | null {
+        if (id === 'wave1') return 'w1';
+        if (id === 'wave2') return 'w2';
+        if (id === 'wave3') return 'w3';
+        if (id === 'thread1') return 't1';
+        if (id === 'thread2') return 't2';
+        return null;
+    }
 
     function onScroll() {
         const scrollY = window.scrollY;
@@ -81,15 +116,15 @@ const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
     }
     window.addEventListener('scroll', onScroll, { passive: true });
 
-    if (svg && blob && wrapper) {
-        const pulseMain = wrapper.getAttribute('data-pulse-main') || '#67e8f9';
-        const pulseSec = wrapper.getAttribute('data-pulse-sec') || '#a5f3fc';
+    if (svg && blobGroup && halo && mid && core && wrapper) {
+        const pulseMain = wrapper.getAttribute('data-pulse-main') || '#a5f3fc';
+        const pulseSec = wrapper.getAttribute('data-pulse-sec') || '#cffafe';
 
         const wavePaths = Array.from(document.querySelectorAll<SVGPathElement>('[data-pulse-path="true"]'));
         const NS = 'http://www.w3.org/2000/svg';
 
         function buildBoxPath(rect: DOMRect): string {
-            const r = 14;
+            const r = 16;
             const x = rect.left;
             const y = rect.top;
             const w = rect.width;
@@ -134,11 +169,26 @@ const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
             return created;
         }
 
+        function updatePulseColors(isSecondary: boolean) {
+            const haloColor = isSecondary ? pulseSec : pulseMain;
+            const midColor = isSecondary ? pulseMain : pulseSec;
+
+            const haloStops = document.querySelectorAll('#pulseHaloGradient stop');
+            if (haloStops[0]) haloStops[0].setAttribute('style', `stop-color:${haloColor};stop-opacity:0.85`);
+            if (haloStops[1]) haloStops[1].setAttribute('style', `stop-color:${haloColor};stop-opacity:0.35`);
+            if (haloStops[2]) haloStops[2].setAttribute('style', `stop-color:${haloColor};stop-opacity:0`);
+
+            const midStops = document.querySelectorAll('#pulseMidGradient stop');
+            if (midStops[0]) midStops[0].setAttribute('style', `stop-color:${midColor};stop-opacity:1`);
+            if (midStops[1]) midStops[1].setAttribute('style', `stop-color:${midColor};stop-opacity:0.5`);
+            if (midStops[2]) midStops[2].setAttribute('style', `stop-color:${midColor};stop-opacity:0`);
+        }
+
         let currentTimeout: number | null = null;
         let isPulsing = false;
 
-        function runPulse(path: SVGPathElement, duration = 4500) {
-            if (!blob) return;
+        function runPulse(path: SVGPathElement, duration = 9000) {
+            if (!blobGroup || !halo || !mid || !core) return;
             isPulsing = true;
             const length = path.getTotalLength();
             const startTime = performance.now();
@@ -146,42 +196,45 @@ const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
                 (path.getAttribute('stroke') || '').includes('gradSec') ||
                 path.id === 'thread1' ||
                 path.id === 'thread2';
-            const color = isSecondary ? pulseSec : pulseMain;
+            updatePulseColors(isSecondary);
 
-            const grad = document.querySelector('#pulseGradient stop:first-child') as SVGStopElement | null;
-            const gradMid = document.querySelectorAll('#pulseGradient stop')[1] as SVGStopElement | null;
-            if (grad) grad.setAttribute('style', `stop-color:${color};stop-opacity:1`);
-            if (gradMid) gradMid.setAttribute('style', `stop-color:${color};stop-opacity:0.4`);
+            const speedKey = getSpeedKey(path.id);
 
             function step(now: number) {
-                if (!blob) return;
+                if (!blobGroup || !halo || !mid || !core) return;
                 const elapsed = now - startTime;
                 const t = Math.min(elapsed / duration, 1);
-                const pt = path.getPointAtLength(t * length);
+                const eased = t < 0.5
+                    ? 2 * t * t
+                    : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
-                let pathTx = 0;
-                const speedKey =
-                    path.id === 'wave1' ? 'w1'
-                    : path.id === 'wave2' ? 'w2'
-                    : path.id === 'wave3' ? 'w3'
-                    : path.id === 'thread1' ? 't1'
-                    : path.id === 'thread2' ? 't2'
-                    : null;
-                if (speedKey) pathTx = window.scrollY * speeds[speedKey as keyof Speeds];
+                const pt = path.getPointAtLength(eased * length);
 
-                blob.setAttribute('cx', String(pt.x + pathTx));
-                blob.setAttribute('cy', String(pt.y));
+                const sampleDelta = Math.max(1, length * 0.002);
+                const before = path.getPointAtLength(Math.max(0, eased * length - sampleDelta));
+                const after = path.getPointAtLength(Math.min(length, eased * length + sampleDelta));
+                const dx = after.x - before.x;
+                const dy = after.y - before.y;
+                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                const pathTx = speedKey ? window.scrollY * speeds[speedKey] : 0;
+                const cx = pt.x + pathTx;
+                const cy = pt.y;
+
+                blobGroup.setAttribute('transform', `translate(${cx} ${cy}) rotate(${angle})`);
 
                 let opacity = 0;
-                if (t < 0.15) opacity = t / 0.15;
-                else if (t > 0.85) opacity = (1 - t) / 0.15;
+                if (t < 0.18) opacity = (t / 0.18);
+                else if (t > 0.82) opacity = ((1 - t) / 0.18);
                 else opacity = 1;
-                blob.setAttribute('opacity', String(opacity * 0.9));
+                opacity = Math.max(0, Math.min(1, opacity));
+
+                blobGroup.setAttribute('opacity', String(opacity));
 
                 if (t < 1) {
                     requestAnimationFrame(step);
                 } else {
-                    blob.setAttribute('opacity', '0');
+                    blobGroup.setAttribute('opacity', '0');
                     isPulsing = false;
                 }
             }
@@ -201,13 +254,16 @@ const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
             }
             const choice = allTargets[Math.floor(Math.random() * allTargets.length)];
             const isBox = choice.getAttribute('data-trail-box-path') === 'true';
-            runPulse(choice, isBox ? 3500 : 4500 + Math.random() * 2000);
+            const duration = isBox
+                ? 7000 + Math.random() * 2000
+                : 9000 + Math.random() * 4000;
+            runPulse(choice, duration);
             schedule();
         }
 
         function schedule() {
             if (currentTimeout) clearTimeout(currentTimeout);
-            const delay = 2500 + Math.random() * 4500;
+            const delay = 3500 + Math.random() * 5500;
             currentTimeout = window.setTimeout(pickAndPulse, delay);
         }
 
@@ -222,7 +278,10 @@ const pulseSec = theme === 'purple' ? '#f472b6' : '#a5f3fc';
         will-change: transform;
     }
     #pulse-blob {
-        transition: opacity 0.05s linear;
         mix-blend-mode: screen;
+    }
+    #pulse-blob ellipse {
+        transform-box: fill-box;
+        transform-origin: center;
     }
 </style>
