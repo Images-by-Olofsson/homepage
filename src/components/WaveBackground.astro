@@ -499,22 +499,21 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
 
                 if (elapsed <= phase1Duration) {
                     // Glide in på entry-path (lila, permanent tråd)
+                    // Pulse är inuti SAMMA SVG som pathen — använd SVG-koord direkt
                     const t = elapsed / phase1Duration;
                     const len = t * entryLen;
                     const pt = entryPath.getPointAtLength(len);
                     const angle = tangentAngle(entryPath, len, entryTotal);
-                    // Konvertera SVG-koord till screen-koord
-                    const ctm = entryPath.getScreenCTM();
-                    const sx = ctm ? (ctm.a * pt.x + ctm.c * pt.y + ctm.e) : pt.x;
-                    const sy = ctm ? (ctm.b * pt.x + ctm.d * pt.y + ctm.f) : pt.y;
-                    applyTransform(blob1!, sx, sy, angle);
+                    applyTransform(blob1!, pt.x, pt.y, angle);
                     blob1!.setAttribute('opacity', String(fade));
                 } else if (elapsed <= phase1Duration + phase2Duration) {
-                    // INSIDE logo — pulse vid logo-center, ändra logo-färg
+                    // INSIDE logo — pulse glider från entry-end-position till exit-start-position
+                    // i SVG-koord-space (samma som phase1 och phase3)
                     const t = (elapsed - phase1Duration) / phase2Duration;
-                    // Pulse-position: glide från logoLeft till logoRight
-                    const cx = logoLeftX + (logoRightX - logoLeftX) * t;
-                    const cy = logoY;
+                    const entryEnd = entryPath.getPointAtLength(entryLen);
+                    const exitStart = exitPath.getPointAtLength(exitStartLen);
+                    const cx = entryEnd.x + (exitStart.x - entryEnd.x) * t;
+                    const cy = entryEnd.y + (exitStart.y - entryEnd.y) * t;
                     applyTransform(blob1!, cx, cy, 0);
                     blob1!.setAttribute('opacity', String(fade * 0.6)); // dimmare i logo (logo-färg tar över visuellt)
 
@@ -527,15 +526,12 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
                         setPulseTint(greenColor);
                     }
                 } else {
-                    // Glide ut på exit-path (permanent cyan-tråd)
+                    // Glide ut på exit-path (permanent cyan-tråd) — SVG-koord direkt
                     const t = Math.min((elapsed - phase1Duration - phase2Duration) / phase3Duration, 1);
                     const len = exitStartLen + (exitLen - exitStartLen) * t;
                     const pt = exitPath.getPointAtLength(len);
                     const angle = tangentAngle(exitPath, len, exitTotal);
-                    const ctm = exitPath.getScreenCTM();
-                    const sx = ctm ? (ctm.a * pt.x + ctm.c * pt.y + ctm.e) : pt.x;
-                    const sy = ctm ? (ctm.b * pt.x + ctm.d * pt.y + ctm.f) : pt.y;
-                    applyTransform(blob1!, sx, sy, angle);
+                    applyTransform(blob1!, pt.x, pt.y, angle);
                     blob1!.setAttribute('opacity', String(fade));
                     if (logo!.getAttribute('data-logo-tint')) {
                         logo!.removeAttribute('data-logo-tint');
