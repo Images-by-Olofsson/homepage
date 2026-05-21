@@ -72,8 +72,6 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
             <path id="thread1" d="M-1000 200 Q 400 400 900 200 T 2600 200" fill="none" stroke="url(#gradSec)" stroke-width="0.5" class="opacity-50" data-pulse-path="true" />
             <path id="thread2" d="M-1000 800 Q 600 600 1100 800 T 2600 800" fill="none" stroke="url(#gradSec)" stroke-width="0.8" class="opacity-60" data-pulse-path="true" />
 
-            <path id="threadLogoIn" d="M 0 0 L 0 0" fill="none" stroke="url(#gradPurple)" stroke-width="0.6" class="opacity-50" />
-            <path id="threadLogoOut" d="M 0 0 L 0 0" fill="none" stroke="url(#gradMain)" stroke-width="0.6" class="opacity-45" />
         </g>
 
         <g id="box-trail-group"></g>
@@ -411,9 +409,8 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
         }
 
         const SPLIT_PROBABILITY = 0.55;
-        const LOGO_PROBABILITY = 0.50;
 
-        function isLogoTargetVisible(): HTMLElement | null {
+        function _unused_isLogoTargetVisible(): HTMLElement | null {
             const el = document.querySelector<HTMLElement>('[data-logo-target]');
             if (!el) return null;
             const rect = el.getBoundingClientRect();
@@ -601,14 +598,6 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
                 return;
             }
             if (wavePaths.length === 0) {
-                schedule();
-                return;
-            }
-
-            // 20% chans för logo-pulse OM logo är synlig
-            const wantLogo = Math.random() < LOGO_PROBABILITY;
-            if (wantLogo && isLogoTargetVisible()) {
-                runLogoPulse(14000 + Math.random() * 4000);
                 schedule();
                 return;
             }
