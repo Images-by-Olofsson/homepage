@@ -447,17 +447,23 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
 
             const NS_local = 'http://www.w3.org/2000/svg';
             // Entry path (lila): från off-screen vänster (dipY) kurvar upp till logo-left
+            // SYNLIG via gradPurple stroke så användaren ser varifrån pulsen kommer
             const entryPath = document.createElementNS(NS_local, 'path');
             entryPath.setAttribute('d', `M ${offLeft} ${dipY} C ${logoLeftX - 200} ${dipY}, ${logoLeftX - 80} ${logoY}, ${logoLeftX} ${logoY}`);
             entryPath.setAttribute('fill', 'none');
-            entryPath.setAttribute('stroke', 'transparent');
+            entryPath.setAttribute('stroke', 'url(#gradPurple)');
+            entryPath.setAttribute('stroke-width', '0.8');
+            entryPath.setAttribute('opacity', '0.55');
             boxGroup.appendChild(entryPath);
 
-            // Exit path (grön): från logo-right kurvar upp till off-screen höger (riseY)
+            // Exit path (cyan): från logo-right kurvar upp till off-screen höger (riseY)
+            // SYNLIG via gradMain (default cyan) så användaren ser varthän pulsen går
             const exitPath = document.createElementNS(NS_local, 'path');
             exitPath.setAttribute('d', `M ${logoRightX} ${logoY} C ${logoRightX + 80} ${logoY}, ${logoRightX + 200} ${riseY}, ${offRight} ${riseY}`);
             exitPath.setAttribute('fill', 'none');
-            exitPath.setAttribute('stroke', 'transparent');
+            exitPath.setAttribute('stroke', 'url(#gradMain)');
+            exitPath.setAttribute('stroke-width', '0.8');
+            exitPath.setAttribute('opacity', '0.55');
             boxGroup.appendChild(exitPath);
 
             const entryLen = entryPath.getTotalLength();
@@ -539,6 +545,9 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
                     // Cleanup dynamic paths
                     if (entryPath.parentNode) entryPath.parentNode.removeChild(entryPath);
                     if (exitPath.parentNode) exitPath.parentNode.removeChild(exitPath);
+                    // ÅTERSTÄLL pulse-gradient till default cyan-tema så nästa
+                    // vanliga wave-pulse inte har stale rosa färg
+                    updatePulseColors(false);
                     isPulsing = false;
                 }
             }
