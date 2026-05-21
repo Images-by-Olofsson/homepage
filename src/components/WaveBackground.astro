@@ -229,46 +229,45 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
             exit: { x: number; y: number },
             half: 'top' | 'bottom'
         ): SVGPathElement {
-            // Goal: smooth path from entry-point → out to box-edge → around half → back from box-edge → exit-point.
-            // We route via the actual box corners + halfway top or bottom of the box.
+            // Path goes: entry → mjuk kurva mot box-kant (top eller bottom) → traverserar horisontellt över box-kanten → mjuk kurva från box-kant till exit-punkt
+            // KRITISKT: pathen ska BARA röra sig framåt (entry.x → exit.x), aldrig vända tillbaka
             const xL = box.left, xR = box.right, yT = box.top, yB = box.bottom, r = box.r;
-            const yMid = box.cy;
 
-            // Tangent-out from entry: smoothly leave the thread and head toward box-edge near top-or-bottom
-            // First waypoint on box-edge — closer to entry's y but rounded into the top/bottom corner
-            const targetTopY = yT;
-            const targetBotY = yB;
-            const apexY = half === 'top' ? targetTopY : targetBotY;
+            // För att undvika "tillbaka-rörelse" när entry/exit ligger UTANFÖR boxens X-range:
+            // Använd entry.x och exit.x som start/end-punkter på den horisontella delen,
+            // clampad till box-kanten med hörn-radius
+            const startX = Math.max(xL + r, Math.min(xR - r, entry.x));
+            const endX = Math.max(xL + r, Math.min(xR - r, exit.x));
 
-            // Two control points to bezier from entry into the corner curve
-            const transitionDist = 24;
-            const cp1x = entry.x + (half === 'top' ? -10 : -10);
-            const cp1y = entry.y + (half === 'top' ? -transitionDist : transitionDist);
-            const cp2x = xL + r;
-            const cp2y = apexY;
+            // Top/bottom Y-koordinat för traversal
+            const traverseY = half === 'top' ? yT : yB;
 
-            // After top/bottom traversal, exit via similar curve back to exit-point
-            const cp3x = xR - r;
-            const cp3y = apexY;
-            const cp4x = exit.x + (half === 'top' ? 10 : 10);
-            const cp4y = exit.y + (half === 'top' ? -transitionDist : transitionDist);
+            // Distans från entry/exit till traverseY (för smooth bezier-overgång)
+            const entryToTraverseY = Math.abs(entry.y - traverseY);
+            const exitToTraverseY = Math.abs(exit.y - traverseY);
 
-            let d: string;
-            if (half === 'top') {
-                d = [
-                    `M ${entry.x} ${entry.y}`,
-                    `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y - r}, ${xL + r} ${yT}`,
-                    `H ${xR - r}`,
-                    `C ${cp3x} ${cp3y - r}, ${cp4x} ${cp4y}, ${exit.x} ${exit.y}`,
-                ].join(' ');
-            } else {
-                d = [
-                    `M ${entry.x} ${entry.y}`,
-                    `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y + r}, ${xL + r} ${yB}`,
-                    `H ${xR - r}`,
-                    `C ${cp3x} ${cp3y + r}, ${cp4x} ${cp4y}, ${exit.x} ${exit.y}`,
-                ].join(' ');
-            }
+            // Kontrollpunkter för Bezier — låt dem peka i rätt riktning (top eller bottom)
+            // cp1: nära entry, dragen mot traverseY
+            const cp1x = entry.x;
+            const cp1y = entry.y + (half === 'top' ? -entryToTraverseY * 0.5 : entryToTraverseY * 0.5);
+            // cp2: vid startX, redan på traverseY-nivå
+            const cp2x = startX;
+            const cp2y = traverseY;
+
+            // cp3: vid endX, fortfarande på traverseY
+            const cp3x = endX;
+            const cp3y = traverseY;
+            // cp4: nära exit, dragen från traverseY
+            const cp4x = exit.x;
+            const cp4y = exit.y + (half === 'top' ? -exitToTraverseY * 0.5 : exitToTraverseY * 0.5);
+
+            const d = [
+                `M ${entry.x} ${entry.y}`,
+                `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${startX} ${traverseY}`,
+                `L ${endX} ${traverseY}`,
+                `C ${cp3x} ${cp3y}, ${cp4x} ${cp4y}, ${exit.x} ${exit.y}`,
+            ].join(' ');
+
             const p = document.createElementNS(NS, 'path');
             p.setAttribute('d', d);
             p.setAttribute('fill', 'none');
@@ -325,6 +324,8 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
             let topPath: SVGPathElement | null = null;
             let bottomPath: SVGPathElement | null = null;
             let phase2Duration = 0;
+            // För TIME-SYNCED meeting: båda blobs animeras med samma t (0→1), olika path-längder = olika faktisk hastighet
+            // Phase2-duration baseras på genomsnittlig path-längd så hastighets-skillnaden hålls liten
             if (hit) {
                 const entryPt = { x: hit.entryX, y: hit.entryY };
                 const exitPt = { x: hit.exitX, y: hit.exitY };
@@ -334,7 +335,9 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
                 boxGroup.appendChild(bottomPath);
                 const topLen = topPath.getTotalLength();
                 const bottomLen = bottomPath.getTotalLength();
-                phase2Duration = Math.max(topLen, bottomLen) / velocity;
+                // Genomsnittlig längd för fart-beräkning (så snabba/långsamma delas jämnt)
+                const avgLen = (topLen + bottomLen) / 2;
+                phase2Duration = avgLen / velocity;
             }
 
             const phase3Duration = hit ? (total - exitLen) / velocity : 0;
@@ -359,8 +362,11 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
                     if (topPath && bottomPath) {
                         const topLen = topPath.getTotalLength();
                         const bottomLen = bottomPath.getTotalLength();
-                        const tDist = Math.min(inPhase2 * velocity, topLen);
-                        const bDist = Math.min(inPhase2 * velocity, bottomLen);
+                        // TIME-SYNCED: båda blobs har samma t (0→1) inom phase2 → möts garanterat samtidigt
+                        // Hastighets-skillnad uppstår automatiskt om topLen ≠ bottomLen
+                        const phase2T = Math.min(inPhase2 / phase2Duration, 1);
+                        const tDist = phase2T * topLen;
+                        const bDist = phase2T * bottomLen;
 
                         const tp = topPath.getPointAtLength(tDist);
                         const ta = tangentAngle(topPath, tDist, topLen);
