@@ -29,6 +29,12 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
                 <stop offset="100%" style={`stop-color:${secondaryColor};stop-opacity:0`} />
             </linearGradient>
 
+            <linearGradient id="gradPurple" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#c026d3;stop-opacity:0" />
+                <stop offset="50%" style="stop-color:#c026d3;stop-opacity:0.45" />
+                <stop offset="100%" style="stop-color:#c026d3;stop-opacity:0" />
+            </linearGradient>
+
             <filter id="pulseGlowSoft" x="-100%" y="-100%" width="300%" height="300%">
                 <feGaussianBlur stdDeviation="22" />
             </filter>
@@ -65,6 +71,8 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
 
             <path id="thread1" d="M-1000 200 Q 400 400 900 200 T 2600 200" fill="none" stroke="url(#gradSec)" stroke-width="0.5" class="opacity-50" data-pulse-path="true" />
             <path id="thread2" d="M-1000 800 Q 600 600 1100 800 T 2600 800" fill="none" stroke="url(#gradSec)" stroke-width="0.8" class="opacity-60" data-pulse-path="true" />
+
+            <path id="threadPurple" d="M-1000 850 Q 400 600 900 850 T 2600 850" fill="none" stroke="url(#gradPurple)" stroke-width="0.7" class="opacity-55" data-pulse-path="true" data-purple-thread="true" />
         </g>
 
         <g id="box-trail-group"></g>
@@ -402,6 +410,134 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
         }
 
         const SPLIT_PROBABILITY = 0.55;
+        const LOGO_PROBABILITY = 0.20;
+
+        function isLogoTargetVisible(): HTMLElement | null {
+            const el = document.querySelector<HTMLElement>('[data-logo-target]');
+            if (!el) return null;
+            const rect = el.getBoundingClientRect();
+            if (rect.bottom < 0 || rect.top > window.innerHeight) return null;
+            if (rect.width < 50 || rect.height < 50) return null;
+            return el;
+        }
+
+        function runLogoPulse(durationMs: number) {
+            if (!blob1) return;
+            const logo = isLogoTargetVisible();
+            const purpleThread = document.getElementById('threadPurple') as SVGPathElement | null;
+            const greenThread = document.getElementById('wave1') as SVGPathElement | null;
+            if (!logo || !purpleThread || !greenThread) {
+                schedule();
+                return;
+            }
+            isPulsing = true;
+            updatePulseColors(false); // start cyan-themed (basis)
+
+            const rect = logo.getBoundingClientRect();
+            const logoLeftX = rect.left + 8;
+            const logoRightX = rect.right - 8;
+            const logoY = rect.top + rect.height / 2;
+
+            // PHASE 1: glide in på purple thread fram till logo-left
+            const purpleLen = purpleThread.getTotalLength();
+            // PHASE 2: in i logon — color shift
+            // PHASE 3: ut på wave1 (grön)
+            const greenLen = greenThread.getTotalLength();
+
+            const phase1Duration = durationMs * 0.35; // 35% glide in
+            const phase2Duration = durationMs * 0.30; // 30% inside logo
+            const phase3Duration = durationMs * 0.35; // 35% glide ut
+
+            const totalTime = phase1Duration + phase2Duration + phase3Duration;
+            const startTime = performance.now();
+
+            // Förbered purple gradient på pulse
+            const pinkColor = '#e879f9';
+            const greenColor = '#4fd1c5';
+
+            function setPulseTint(color: string) {
+                const haloStops = document.querySelectorAll('#pulseHaloGradient stop');
+                if (haloStops[0]) haloStops[0].setAttribute('style', `stop-color:${color};stop-opacity:0.85`);
+                if (haloStops[1]) haloStops[1].setAttribute('style', `stop-color:${color};stop-opacity:0.35`);
+                if (haloStops[2]) haloStops[2].setAttribute('style', `stop-color:${color};stop-opacity:0`);
+                const midStops = document.querySelectorAll('#pulseMidGradient stop');
+                if (midStops[0]) midStops[0].setAttribute('style', `stop-color:${color};stop-opacity:1`);
+                if (midStops[1]) midStops[1].setAttribute('style', `stop-color:${color};stop-opacity:0.5`);
+                if (midStops[2]) midStops[2].setAttribute('style', `stop-color:${color};stop-opacity:0`);
+            }
+
+            setPulseTint(pinkColor);
+            blob2 && blob2.setAttribute('opacity', '0');
+
+            // Find on purpleThread where it crosses logoLeftX (approx)
+            // Sample to find length when pt.x ~ logoLeftX
+            let purpleEntryLen = purpleLen;
+            for (let l = 0; l <= purpleLen; l += 4) {
+                const pt = purpleThread.getPointAtLength(l);
+                if (pt.x >= logoLeftX) { purpleEntryLen = l; break; }
+            }
+            let greenStartLen = 0;
+            for (let l = 0; l <= greenLen; l += 4) {
+                const pt = greenThread.getPointAtLength(l);
+                if (pt.x >= logoRightX) { greenStartLen = l; break; }
+            }
+            const greenEndLen = Math.min(greenStartLen + (greenLen - greenStartLen) * 0.55, greenLen);
+
+            function step(now: number) {
+                if (!blob1) return;
+                const elapsed = now - startTime;
+                const globalT = Math.min(elapsed / totalTime, 1);
+                const fade = fadeFactor(globalT);
+
+                if (elapsed <= phase1Duration) {
+                    // Glide in på purple thread fram till logo-left
+                    const t = elapsed / phase1Duration;
+                    const len = t * purpleEntryLen;
+                    const pt = purpleThread!.getPointAtLength(len);
+                    const angle = tangentAngle(purpleThread!, len, purpleLen);
+                    applyTransform(blob1!, pt.x, pt.y, angle);
+                    blob1!.setAttribute('opacity', String(fade));
+                } else if (elapsed <= phase1Duration + phase2Duration) {
+                    // INSIDE logo — pulse vid logo-center, ändra logo-färg
+                    const t = (elapsed - phase1Duration) / phase2Duration;
+                    // Pulse-position: glide från logoLeft till logoRight
+                    const cx = logoLeftX + (logoRightX - logoLeftX) * t;
+                    const cy = logoY;
+                    applyTransform(blob1!, cx, cy, 0);
+                    blob1!.setAttribute('opacity', String(fade * 0.6)); // dimmare i logo (logo-färg tar över visuellt)
+
+                    // Färg-shift: rosa första halvan, grön andra halvan
+                    if (t < 0.5) {
+                        logo!.setAttribute('data-logo-tint', 'pink');
+                        setPulseTint(pinkColor);
+                    } else {
+                        logo!.setAttribute('data-logo-tint', 'green');
+                        setPulseTint(greenColor);
+                    }
+                } else {
+                    // Glide ut på wave1 (grön)
+                    const t = Math.min((elapsed - phase1Duration - phase2Duration) / phase3Duration, 1);
+                    const len = greenStartLen + (greenEndLen - greenStartLen) * t;
+                    const pt = greenThread!.getPointAtLength(len);
+                    const angle = tangentAngle(greenThread!, len, greenLen);
+                    applyTransform(blob1!, pt.x, pt.y, angle);
+                    blob1!.setAttribute('opacity', String(fade));
+                    if (logo!.getAttribute('data-logo-tint')) {
+                        // Fade tillbaka till basis
+                        logo!.removeAttribute('data-logo-tint');
+                    }
+                }
+
+                if (elapsed < totalTime && globalT < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    blob1!.setAttribute('opacity', '0');
+                    logo!.removeAttribute('data-logo-tint');
+                    isPulsing = false;
+                }
+            }
+            requestAnimationFrame(step);
+        }
 
         function pickAndPulse() {
             if (isPulsing) {
@@ -412,6 +548,15 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
                 schedule();
                 return;
             }
+
+            // 20% chans för logo-pulse OM logo är synlig
+            const wantLogo = Math.random() < LOGO_PROBABILITY;
+            if (wantLogo && isLogoTargetVisible()) {
+                runLogoPulse(14000 + Math.random() * 4000);
+                schedule();
+                return;
+            }
+
             const boxes = refreshBoxes();
             const intersecting: SVGPathElement[] = [];
             const nonIntersecting: SVGPathElement[] = [];
