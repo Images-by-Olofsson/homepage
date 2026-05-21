@@ -14,8 +14,8 @@ import WaveBackground from '../components/WaveBackground.astro';
   <div id="hero-text" class="fixed top-0 left-0 w-full h-screen flex flex-col items-center justify-center z-10 pointer-events-none opacity-0 transition-all duration-700 ease-in-out">
     
     <div class="text-center animated-text-container relative">
-      
-      <div id="text-wrapper" class="inline-block relative p-6 transition-all duration-500">
+
+      <div id="text-wrapper" data-logo-target class="inline-block relative p-6 transition-all duration-500">
         
         <h1 class="text-5xl md:text-8xl font-black text-white tracking-tighter leading-none drop-shadow-[0_0_10px_rgba(34,211,238,0.4)] relative z-10">
             IMAGES BY <br/> OLOFSSON
@@ -108,12 +108,40 @@ import WaveBackground from '../components/WaveBackground.astro';
     }
     .smoky-path {
         animation: drawPath 6s cubic-bezier(0.4, 0, 0.2, 1) infinite, smokeShift 10s ease-in-out infinite alternate;
+        transition: stroke 0.8s ease, filter 0.8s ease;
     }
     @keyframes smokeShift {
         0% { stroke: #374151; }
         33% { stroke: #4b5563; }
         66% { stroke: #334155; }
         100% { stroke: #1f2937; }
+    }
+
+    /* Logo-pulse: när data-attribut sätts på text-wrapper, override:a stroke + drop-shadow */
+    #text-wrapper[data-logo-tint="pink"] ~ * .smoky-path,
+    #text-wrapper[data-logo-tint="pink"] .smoky-path {
+        animation: none !important;
+        stroke: #e879f9 !important;
+        opacity: 0.95 !important;
+        filter: url(#fog-filter) drop-shadow(0 0 12px rgba(232,121,249,0.7));
+    }
+    #text-wrapper[data-logo-tint="green"] ~ * .smoky-path,
+    #text-wrapper[data-logo-tint="green"] .smoky-path {
+        animation: none !important;
+        stroke: #4fd1c5 !important;
+        opacity: 0.95 !important;
+        filter: url(#fog-filter) drop-shadow(0 0 12px rgba(79,209,197,0.7));
+    }
+    #text-wrapper[data-logo-tint="pink"] h1 {
+        text-shadow: 0 0 25px rgba(232,121,249,0.85), 0 0 50px rgba(232,121,249,0.55);
+        transition: text-shadow 0.6s ease;
+    }
+    #text-wrapper[data-logo-tint="green"] h1 {
+        text-shadow: 0 0 25px rgba(79,209,197,0.85), 0 0 50px rgba(79,209,197,0.55);
+        transition: text-shadow 0.6s ease;
+    }
+    #text-wrapper h1 {
+        transition: text-shadow 0.8s ease;
     }
 
     /* --- BRACKETS (Hörnen) --- */
