@@ -140,6 +140,17 @@ import WaveBackground from '../components/WaveBackground.astro';
         text-shadow: 0 0 25px rgba(79,209,197,0.85), 0 0 50px rgba(79,209,197,0.55);
         transition: text-shadow 0.6s ease;
     }
+    #text-wrapper[data-logo-tint="magenta"] ~ * .smoky-path,
+    #text-wrapper[data-logo-tint="magenta"] .smoky-path {
+        animation: none !important;
+        stroke: #c026d3 !important;
+        opacity: 0.95 !important;
+        filter: url(#fog-filter) drop-shadow(0 0 12px rgba(192,38,211,0.7));
+    }
+    #text-wrapper[data-logo-tint="magenta"] h1 {
+        text-shadow: 0 0 25px rgba(192,38,211,0.85), 0 0 50px rgba(192,38,211,0.55);
+        transition: text-shadow 0.6s ease;
+    }
     #text-wrapper h1 {
         transition: text-shadow 0.8s ease;
     }
@@ -283,4 +294,18 @@ import WaveBackground from '../components/WaveBackground.astro';
   }, { threshold: 0.1 }); 
 
   if (footer) observer.observe(footer);
+
+  // FOOTER-LÄNKAR HOVER: ändra logo-glow när användare hovrar lyxlimo/karleksguiden-länkar
+  const glowLinks = document.querySelectorAll<HTMLElement>('[data-glow-link]');
+  glowLinks.forEach(link => {
+    link.addEventListener('mouseenter', () => {
+      if (!textWrapper) return;
+      const tint = link.getAttribute('data-glow-link');
+      if (tint) textWrapper.setAttribute('data-logo-tint', tint);
+    });
+    link.addEventListener('mouseleave', () => {
+      if (!textWrapper) return;
+      textWrapper.removeAttribute('data-logo-tint');
+    });
+  });
 </script>
