@@ -447,23 +447,24 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
 
             const NS_local = 'http://www.w3.org/2000/svg';
             // Entry path (lila): från off-screen vänster (dipY) kurvar upp till logo-left
-            // SYNLIG via gradPurple stroke så användaren ser varifrån pulsen kommer
+            // TYDLIG SOLID stroke + glow filter så användaren ser tråden ordentligt
             const entryPath = document.createElementNS(NS_local, 'path');
             entryPath.setAttribute('d', `M ${offLeft} ${dipY} C ${logoLeftX - 200} ${dipY}, ${logoLeftX - 80} ${logoY}, ${logoLeftX} ${logoY}`);
             entryPath.setAttribute('fill', 'none');
-            entryPath.setAttribute('stroke', 'url(#gradPurple)');
-            entryPath.setAttribute('stroke-width', '0.8');
-            entryPath.setAttribute('opacity', '0.55');
+            entryPath.setAttribute('stroke', '#e879f9');
+            entryPath.setAttribute('stroke-width', '2');
+            entryPath.setAttribute('opacity', '0.85');
+            entryPath.setAttribute('filter', 'url(#pulseGlowMid)');
             boxGroup.appendChild(entryPath);
 
             // Exit path (cyan): från logo-right kurvar upp till off-screen höger (riseY)
-            // SYNLIG via gradMain (default cyan) så användaren ser varthän pulsen går
             const exitPath = document.createElementNS(NS_local, 'path');
             exitPath.setAttribute('d', `M ${logoRightX} ${logoY} C ${logoRightX + 80} ${logoY}, ${logoRightX + 200} ${riseY}, ${offRight} ${riseY}`);
             exitPath.setAttribute('fill', 'none');
-            exitPath.setAttribute('stroke', 'url(#gradMain)');
-            exitPath.setAttribute('stroke-width', '0.8');
-            exitPath.setAttribute('opacity', '0.55');
+            exitPath.setAttribute('stroke', '#4fd1c5');
+            exitPath.setAttribute('stroke-width', '2');
+            exitPath.setAttribute('opacity', '0.85');
+            exitPath.setAttribute('filter', 'url(#pulseGlowMid)');
             boxGroup.appendChild(exitPath);
 
             const entryLen = entryPath.getTotalLength();
