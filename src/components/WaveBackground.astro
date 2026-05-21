@@ -72,8 +72,8 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
             <path id="thread1" d="M-1000 200 Q 400 400 900 200 T 2600 200" fill="none" stroke="url(#gradSec)" stroke-width="0.5" class="opacity-50" data-pulse-path="true" />
             <path id="thread2" d="M-1000 800 Q 600 600 1100 800 T 2600 800" fill="none" stroke="url(#gradSec)" stroke-width="0.8" class="opacity-60" data-pulse-path="true" />
 
-            <path id="threadLogoIn" d="M-1000 600 C -300 600, 400 287, 900 287 S 1900 287, 2600 100" fill="none" stroke="url(#gradPurple)" stroke-width="0.7" class="opacity-55" />
-            <path id="threadLogoOut" d="M-1000 100 C -300 100, 400 287, 900 287 S 1900 287, 2600 600" fill="none" stroke="url(#gradMain)" stroke-width="0.7" class="opacity-50" />
+            <path id="threadLogoIn" d="M 0 0 L 0 0" fill="none" stroke="url(#gradPurple)" stroke-width="0.6" class="opacity-50" />
+            <path id="threadLogoOut" d="M 0 0 L 0 0" fill="none" stroke="url(#gradMain)" stroke-width="0.6" class="opacity-45" />
         </g>
 
         <g id="box-trail-group"></g>
@@ -422,6 +422,47 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
             return el;
         }
 
+        function updateLogoThreadPaths() {
+            const logo = document.querySelector<HTMLElement>('[data-logo-target]');
+            const threadIn = document.getElementById('threadLogoIn') as SVGPathElement | null;
+            const threadOut = document.getElementById('threadLogoOut') as SVGPathElement | null;
+            if (!logo || !threadIn || !threadOut) return;
+            const rect = logo.getBoundingClientRect();
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            // Bracket-pinnarnas SLUT (där vertikala benen tar slut)
+            // ::before: top-left bracket, height=40% av text-wrapper. Vänstra benet går nedåt 40% av höjden
+            // Lås-punkt: (rect.left, rect.top + 0.40 * rect.height) — pinnens nedre spets
+            const leftPinX = rect.left;
+            const leftPinY = rect.top + rect.height * 0.40;
+            // ::after: bottom-right bracket. Höger ben börjar 40% från botten
+            // Lås-punkt: (rect.right, rect.bottom - 0.40 * rect.height) — pinnens övre spets
+            const rightPinX = rect.right;
+            const rightPinY = rect.bottom - rect.height * 0.40;
+
+            // Rosa tråd: från (0, vh) → (leftPinX, leftPinY)
+            // x² curve: kontrollpunkt (endX, startY) = rakt fram, sedan upp = accelererande lutning
+            const inStartX = 0, inStartY = vh;
+            const inEndX = leftPinX, inEndY = leftPinY;
+            const inCpX = inEndX, inCpY = inStartY;
+            threadIn.setAttribute('d', `M ${inStartX} ${inStartY} Q ${inCpX} ${inCpY}, ${inEndX} ${inEndY}`);
+
+            // Cyan tråd: från (rightPinX, rightPinY) → (vw, 0)
+            // -x² curve: kontrollpunkt (startX, endY) = upp först, sedan rakt = decelererande lutning
+            const outStartX = rightPinX, outStartY = rightPinY;
+            const outEndX = vw, outEndY = 0;
+            const outCpX = outStartX, outCpY = outEndY;
+            threadOut.setAttribute('d', `M ${outStartX} ${outStartY} Q ${outCpX} ${outCpY}, ${outEndX} ${outEndY}`);
+        }
+
+        // Uppdatera vid load + resize + scroll (logo-position beror på alla tre)
+        updateLogoThreadPaths();
+        window.addEventListener('resize', updateLogoThreadPaths);
+        window.addEventListener('scroll', updateLogoThreadPaths, { passive: true });
+        // Re-run efter en kort delay för att Astro layout ska vara klar
+        setTimeout(updateLogoThreadPaths, 500);
+        setTimeout(updateLogoThreadPaths, 1500);
+
         function runLogoPulse(durationMs: number) {
             if (!blob1) return;
             const logo = isLogoTargetVisible();
@@ -433,6 +474,9 @@ const pulseCore = theme === 'purple' ? '#fdf4ff' : '#f0fdfa';
             }
             isPulsing = true;
             updatePulseColors(false);
+
+            // Uppdatera path-d till EXAKT nuvarande logo-position innan pulse börjar
+            updateLogoThreadPaths();
 
             const rect = logo.getBoundingClientRect();
             const logoLeftX = rect.left + 8;
