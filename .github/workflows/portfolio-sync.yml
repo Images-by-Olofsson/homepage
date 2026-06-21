@@ -33,14 +33,27 @@ jobs:
           IMMICH_API_KEY: ${{ secrets.IMMICH_API_KEY }}
         run: node scripts/portfolio-sync.mjs
 
-      - name: Commit & push if changed
+      - name: Commit, PR & auto-merge if changed
         if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_PAT }}
+          SYNC_PAT: ${{ secrets.SYNC_PAT }}
+          REPO: ${{ github.repository }}
+          ADDED: ${{ steps.sync.outputs.added }}
+          REMOVED: ${{ steps.sync.outputs.removed }}
         run: |
+          set -e
+          BRANCH="sync/portfolio-$(date +%Y%m%d-%H%M%S)"
           git config user.name "portfolio-sync[bot]"
           git config user.email "actions@github.com"
+          git checkout -b "$BRANCH"
           git add src/assets/images/portfolio/
-          git commit -m "chore(portfolio): sync ${{ steps.sync.outputs.added }} added, ${{ steps.sync.outputs.removed }} removed from Immich"
-          git push origin HEAD:main
+          git commit -m "chore(portfolio): sync ${ADDED} added, ${REMOVED} removed from Immich"
+          git push "https://x-access-token:${SYNC_PAT}@github.com/${REPO}.git" "$BRANCH"
+          gh pr create --head "$BRANCH" --base main \
+            --title "chore(portfolio): Immich sync (${ADDED} added, ${REMOVED} removed)" \
+            --body "Automated portfolio sync from Immich portfolio tag."
+          gh pr merge "$BRANCH" --squash --admin --delete-branch
 
       - name: Trigger Coolify deploy
         if: steps.sync.outputs.changed == 'true'
