@@ -1,0 +1,73 @@
+name: Portfolio-synk (Immich → portfolio)
+
+on:
+  schedule:
+    - cron: '0 3 * * *'      # dygnsvis 03:00 UTC
+  workflow_dispatch:          # "på begäran" — manuell knapp / API-trigger
+
+permissions:
+  contents: write             # för att committa nya bilder
+
+concurrency:
+  group: portfolio-sync       # ingen parallell körning (race-skydd)
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install sharp
+        run: npm install sharp@^0.33.5
+
+      - name: Run portfolio sync
+        id: sync
+        env:
+          IMMICH_API_KEY: ${{ secrets.IMMICH_API_KEY }}
+        run: node scripts/portfolio-sync.mjs
+
+      - name: Commit & push if changed
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          git config user.name "portfolio-sync[bot]"
+          git config user.email "actions@github.com"
+          git add src/assets/images/portfolio/
+          git commit -m "chore(portfolio): sync ${{ steps.sync.outputs.added }} added, ${{ steps.sync.outputs.removed }} removed from Immich"
+          git push origin HEAD:main
+
+      - name: Trigger Coolify deploy
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          DEP=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+            "http://100.66.207.21:8000/api/v1/deploy?uuid=kbhpiq6anucu8owch29c207w" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['deployments'][0]['deployment_uuid'])")
+          echo "deployment: $DEP"
+          for i in $(seq 1 20); do
+            S=$(curl -s -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" "http://100.66.207.21:8000/api/v1/deployments/$DEP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','?'))")
+            echo "[$i] deploy-status: $S"
+            [ "$S" = "finished" ] && break
+            [ "$S" = "failed" ] && { echo "DEPLOY FAILED"; exit 1; }
+            sleep 12
+          done
+
+      - name: Purge Cloudflare cache
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/22c7ed24735e7417d814ef66d90e4397/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CF_PURGE_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"files":["https://imagesbyolofsson.se/portfolio"]}'
+
+      - name: Summary
+        run: |
+          echo "### Portfolio-synk klar" >> $GITHUB_STEP_SUMMARY
+          echo "- Tillagda: ${{ steps.sync.outputs.added }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Borttagna: ${{ steps.sync.outputs.removed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Ändring: ${{ steps.sync.outputs.changed }}" >> $GITHUB_STEP_SUMMARY
