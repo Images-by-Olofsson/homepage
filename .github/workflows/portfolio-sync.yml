@@ -55,20 +55,11 @@ jobs:
             --body "Automated portfolio sync from Immich portfolio tag."
           gh pr merge "$BRANCH" --squash --admin --delete-branch
 
-      - name: Trigger Coolify deploy
+      # Coolify auto-deployar på push till main (webhook) — GitHub-runnern når
+      # inte Coolify (Tailscale-IP 100.x), så vi triggar inte härifrån.
+      - name: Wait for Coolify auto-deploy
         if: steps.sync.outputs.changed == 'true'
-        run: |
-          DEP=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
-            "http://100.66.207.21:8000/api/v1/deploy?uuid=kbhpiq6anucu8owch29c207w" \
-            | python3 -c "import sys,json; print(json.load(sys.stdin)['deployments'][0]['deployment_uuid'])")
-          echo "deployment: $DEP"
-          for i in $(seq 1 20); do
-            S=$(curl -s -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" "http://100.66.207.21:8000/api/v1/deployments/$DEP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','?'))")
-            echo "[$i] deploy-status: $S"
-            [ "$S" = "finished" ] && break
-            [ "$S" = "failed" ] && { echo "DEPLOY FAILED"; exit 1; }
-            sleep 12
-          done
+        run: sleep 120
 
       - name: Purge Cloudflare cache
         if: steps.sync.outputs.changed == 'true'
@@ -76,7 +67,7 @@ jobs:
           curl -s -X POST "https://api.cloudflare.com/client/v4/zones/22c7ed24735e7417d814ef66d90e4397/purge_cache" \
             -H "Authorization: Bearer ${{ secrets.CF_PURGE_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"files":["https://imagesbyolofsson.se/portfolio"]}'
+            -d '{"files":["https://imagesbyolofsson.se/portfolio"]}' || echo "CF-purge misslyckades (icke-kritiskt)"
 
       - name: Summary
         run: |
