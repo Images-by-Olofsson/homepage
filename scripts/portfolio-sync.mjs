@@ -12,6 +12,14 @@ const TAGID = process.env.PORTFOLIO_TAG_ID || "67d16b6c-0dea-42ef-a289-2c9e57fa5
 const PORTFOLIO_DIR = "src/assets/images/portfolio";
 const MAX_DIM = 3000;
 const JPEG_QUALITY = 88;
+// RAW-format som sharp/libvips inte kan konvertera — hoppas över elegant.
+// Tagga JPEG-versionen (redigera RAW → exportera JPEG → tagga den) istället.
+const RAW_EXTENSIONS = [".cr2", ".cr3", ".arw", ".nef", ".dng", ".raf", ".orf", ".rw2", ".pef", ".srw"];
+
+function isRaw(name) {
+  const lower = name.toLowerCase();
+  return RAW_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
 
 if (!KEY) { console.error("IMMICH_API_KEY saknas"); process.exit(1); }
 
@@ -78,15 +86,23 @@ async function downloadAndResize(asset, destPath) {
 }
 
 async function main() {
-  const tagged = await fetchTagged();
+  const taggedAll = await fetchTagged();
+  // Hoppa över RAW-filer elegant — de räknas inte mot synk (tagga JPEG-versionen istället)
+  const skippedRaw = taggedAll.filter((a) => isRaw(a.name));
+  const tagged = taggedAll.filter((a) => !isRaw(a.name));
+
   const synced = existingSynced();
   const taggedIds = new Set(tagged.map((a) => a.id));
 
   const toAdd = tagged.filter((a) => !synced[a.id]);
   const toRemove = Object.entries(synced).filter(([id]) => !taggedIds.has(id)).map(([id, file]) => ({ id, file }));
 
-  console.log(`portfolio-synk: ${tagged.length} taggade, ${Object.keys(synced).length} redan synkade`);
+  console.log(`portfolio-synk: ${taggedAll.length} taggade (${tagged.length} bilder + ${skippedRaw.length} RAW), ${Object.keys(synced).length} redan synkade`);
   console.log(`→ lägg till: ${toAdd.length}, ta bort: ${toRemove.length}`);
+  if (skippedRaw.length) {
+    console.log(`⏭  Hoppade över ${skippedRaw.length} RAW-fil(er) — tagga JPEG-versionen istället:`);
+    for (const r of skippedRaw) console.log(`     ${r.name}`);
+  }
 
   fs.mkdirSync(PORTFOLIO_DIR, { recursive: true });
 
